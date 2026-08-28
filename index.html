@@ -1,9 +1,61 @@
 <!doctype html>
 <html lang="de">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Online Survival Test · v0.6.1</title><link rel="stylesheet" href="styles.css"/><link rel="stylesheet" href="concept-v061.css"/></head>
-<body><main class="shell">
-<section id="start" class="card hero"><span class="badge">Medienkompetenz · Praxis-Test</span><h1>Online Survival Test</h1><p>Ein anspruchsvoller, szenariobasierter Test für Kinder und Jugendliche. Keine Anmeldung, Antworten bleiben lokal im Browser.</p><div class="role-switch" aria-label="Modus wählen"><button class="role active" data-role="child">Kind / Jugendlicher</button><button class="role" data-role="educator">Eltern / Lehrer</button></div><div id="childStart" class="mode-grid"><button class="mode" data-age="11"><strong>Junior · 11 Jahre</strong><span>umfangreicher Test + Simulationen</span></button><button class="mode" data-age="13"><strong>Advanced · 13 Jahre</strong><span>schwerer Test + verzweigte Simulationen</span></button></div><div id="educatorStart" class="educator-start hidden"><p>Antwortschlüssel, Gesprächshinweise, Red-Flag-Themen und Testübersicht – ohne die Antworten vorher im Kind-Modus zu zeigen.</p><div class="mode-grid"><button class="mode educator-open" data-educator-age="11"><strong>Auswertung · 11 Jahre</strong><span>Leitfaden & Antwortschlüssel</span></button><button class="mode educator-open" data-educator-age="13"><strong>Auswertung · 13 Jahre</strong><span>Leitfaden & Antwortschlüssel</span></button></div></div><details class="info"><summary>Wie wird bewertet?</summary><p>Es gibt Punkte pro Kompetenzbereich. Kritische Sicherheitsfehler werden zusätzlich als Red Flag markiert. Das Ergebnis ist kein Verbotssignal, sondern eine Grundlage für ein Gespräch.</p></details></section>
-<section id="quiz" class="hidden concept-quiz"><header class="topbar card"><div><span id="modeLabel" class="badge"></span><h2 id="categoryTitle">Kategorie</h2></div><div class="progress-wrap"><span id="progressText"></span><div class="progress"><i id="progressBar"></i></div></div></header><article class="card question-card"><div class="question-meta"><span id="difficulty"></span><span id="categoryTag"></span></div><h3 id="questionText"></h3><div id="scenario" class="scenario hidden"></div><div id="visual" class="visual-stage hidden" aria-label="Simulierter Screenshot"></div><div id="answers" class="answers"></div><div id="branchStage" class="branch-stage hidden"></div><label id="freeWrap" class="free hidden"><span>Deine Antwort</span><textarea id="freeAnswer" rows="5" placeholder="Beschreibe, was du tun würdest und warum."></textarea></label><div class="actions"><button id="prevBtn" class="secondary">Zurück</button><button id="nextBtn">Weiter</button></div></article><aside id="guidancePanel" class="guidance-panel card" aria-live="polite"><span class="badge">Leitlinie</span><h3 id="guidanceTitle">Sicher entscheiden</h3><p id="guidanceWhy" class="guidance-why"></p><div id="guidanceRules" class="guidance-rules"></div><details class="guidance-more"><summary>Warum ist das wichtig?</summary><p id="guidanceExplain"></p></details><p class="guidance-note">Die Leitlinien helfen beim Denken – sie verraten nicht die konkrete Lösung der Aufgabe.</p></aside></section>
-<section id="educatorPanel" class="hidden"><header class="topbar card"><div><span class="badge">Eltern-/Lehrer-Modus</span><h2 id="educatorTitle">Auswertungsleitfaden</h2></div><button id="educatorBack" class="secondary">Zur Startseite</button></header><article class="card educator-dashboard"><div class="educator-tools"><label>Altersstufe <select id="educatorAge"><option value="11">11 Jahre</option><option value="13">13 Jahre</option></select></label><label>Bereich <select id="educatorCategory"><option value="all">Alle Bereiche</option></select></label><button id="educatorPrint">Leitfaden drucken / PDF</button></div><div id="educatorSummary" class="edu-summary"></div><div id="educatorGuide" class="edu-guide"></div></article></section>
-<section id="result" class="hidden"><article class="card"><span class="badge">Auswertung</span><h1 id="scoreTitle"></h1><p id="scoreIntro"></p><div id="categoryScores" class="scores"></div><div id="redFlags" class="redflags"></div><div class="actions"><button id="restartBtn" class="secondary">Neu starten</button><button id="reviewBtn" class="secondary">Mit Eltern/Lehrer besprechen</button><button id="printBtn">Drucken / PDF</button></div></article><article class="card educator"><h2>Hinweis für Erwachsene</h2><p>Besprecht vor allem die Begründungen. Ein Kind kann eine richtige Antwort erraten und trotzdem das Risiko nicht verstanden haben. Besonders wichtig ist, dass es weiß: Bei Erpressung, Grooming, Account-Übernahme oder peinlichen Fehlern immer Hilfe holen – ohne Angst vor Ärger.</p></article></section>
-</main><script src="app.js"></script><script src="social-pack.js"></script><script src="visual-pack.js"></script><script src="scenario-engine.js"></script><script src="educator.js"></script><script src="v05-pack.js"></script><script src="v051-pack.js"></script><script src="v058-pack.js"></script><script src="v060-guidance.js"></script><script src="v061-concept.js"></script></body></html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#07111f" />
+  <title>Online Survival Test · v0.6.2</title>
+  <link rel="stylesheet" href="styles.css?v=062" />
+  <link rel="stylesheet" href="concept-v062.css?v=062" />
+</head>
+<body>
+  <main class="shell">
+    <section id="start" class="card hero concept-start">
+      <div class="start-brand"><span class="brand-shield">◈</span><div><strong>ONLINE<br>SURVIVAL TEST</strong><small>Medienkompetenz · Praxis-Test</small></div></div>
+      <h1>Wie sicher bewegst du dich online?</h1>
+      <p>Realistische Situationen statt Schulbuchfragen: Chats, Grooming, Gruppendruck, Scams, Privatsphäre, KI-Inhalte und Hilfe holen.</p>
+      <div class="role-switch" aria-label="Modus wählen"><button class="role active" data-role="child">Kind / Jugendlicher</button><button class="role" data-role="educator">Eltern / Lehrer</button></div>
+      <div id="childStart" class="mode-grid"><button class="mode" data-age="11"><strong>Junior · 11 Jahre</strong><span>umfangreicher Test + Simulationen</span></button><button class="mode" data-age="13"><strong>Advanced · 13 Jahre</strong><span>schwerer Test + verzweigte Simulationen</span></button></div>
+      <div id="educatorStart" class="educator-start hidden"><p>Antwortschlüssel, Gesprächshinweise, Red-Flag-Themen und Testübersicht – ohne die Antworten vorher im Kind-Modus zu zeigen.</p><div class="mode-grid"><button class="mode educator-open" data-educator-age="11"><strong>Auswertung · 11 Jahre</strong><span>Leitfaden & Antwortschlüssel</span></button><button class="mode educator-open" data-educator-age="13"><strong>Auswertung · 13 Jahre</strong><span>Leitfaden & Antwortschlüssel</span></button></div></div>
+      <details class="info"><summary>Wie wird bewertet?</summary><p>Es gibt Punkte pro Kompetenzbereich. Kritische Sicherheitsfehler werden zusätzlich als Red Flag markiert. Das Ergebnis ist kein Verbotssignal, sondern eine Grundlage für ein Gespräch.</p></details>
+    </section>
+
+    <section id="quiz" class="hidden app-quiz">
+      <header class="app-topbar">
+        <div class="app-brand"><span class="brand-shield">◈</span><strong>ONLINE<br>SURVIVAL TEST</strong></div>
+        <div class="app-mode"><span>Modus:</span><b id="modeLabel"></b></div>
+        <div class="app-progress"><span>Fortschritt</span><div class="progress"><i id="progressBar"></i></div><b id="progressPercent">0%</b><span id="progressText" class="sr-only"></span></div>
+        <div class="app-top-actions"><span>▱ <b id="markedCount">Merkliste (0)</b></span><span>⚙ Einstellungen</span></div>
+      </header>
+
+      <div class="app-layout">
+        <aside class="areas-panel"><div class="panel-kicker">BEREICHE</div><nav id="categoryNav" class="category-nav" aria-label="Testbereiche"></nav><div class="autosave-card"><b>▣ Dein Test läuft automatisch</b><p>Deine Antworten bleiben während des Tests erhalten.</p></div></aside>
+
+        <main class="question-zone">
+          <article class="question-card concept-question-card">
+            <div class="question-head-row"><span id="questionNumber">Frage</span><div class="question-meta"><span id="difficulty"></span><span id="categoryTag"></span></div></div>
+            <h2 id="categoryTitle" class="sr-only">Kategorie</h2>
+            <h3 id="questionText"></h3>
+            <div id="scenario" class="scenario hidden"></div>
+            <div id="visual" class="visual-stage hidden" aria-label="Simulierter Screenshot"></div>
+            <div id="answers" class="answers"></div><div id="branchStage" class="branch-stage hidden"></div>
+            <label id="freeWrap" class="free hidden"><span>Deine Antwort</span><textarea id="freeAnswer" rows="5" placeholder="Beschreibe, was du tun würdest und warum."></textarea></label>
+            <div class="question-footer"><label class="remember-toggle"><input id="rememberQuestion" type="checkbox" /> <span>Merken für später</span></label><div class="actions"><button id="prevBtn" class="secondary">← Zurück</button><button id="nextBtn">Weiter →</button></div></div>
+          </article>
+          <div class="micro-tip"><span>✦</span><p id="microTipText">Tipp: Achte auf Muster. Einzelne Dinge sind nicht immer schlimm – die Kombination macht oft den Unterschied.</p></div>
+        </main>
+
+        <aside class="right-rail">
+          <section class="scenario-card rail-card"><div class="panel-kicker">AKTUELLES THEMA</div><h3 id="scenarioSideTitle">Sicher entscheiden</h3><p id="scenarioSideText">Prüfe nicht nur einzelne Nachrichten, sondern das gesamte Verhalten und den Kontext.</p><div class="mini-progress-title"><span>Dein Fortschritt in diesem Bereich</span><b id="categoryProgressText">0 / 0</b></div><div class="progress category-progress"><i id="categoryProgressBar"></i></div></section>
+          <section id="guidancePanel" class="guidance-panel rail-card" aria-live="polite"><div class="guidance-title-row"><span class="guidance-icon">☼</span><div><div class="panel-kicker">DENK DARAN</div><h3 id="guidanceTitle">Sicher entscheiden</h3></div></div><p id="guidanceWhy" class="guidance-why"></p><div id="guidanceRules" class="guidance-rules"></div><details class="guidance-more"><summary>Warum ist das wichtig?</summary><p id="guidanceExplain"></p></details><p class="guidance-note">Die Leitlinien helfen beim Denken – sie verraten nicht die konkrete Lösung der Aufgabe.</p></section>
+        </aside>
+      </div>
+    </section>
+
+    <section id="educatorPanel" class="hidden"><header class="topbar card"><div><span class="badge">Eltern-/Lehrer-Modus</span><h2 id="educatorTitle">Auswertungsleitfaden</h2></div><button id="educatorBack" class="secondary">Zur Startseite</button></header><article class="card educator-dashboard"><div class="educator-tools"><label>Altersstufe <select id="educatorAge"><option value="11">11 Jahre</option><option value="13">13 Jahre</option></select></label><label>Bereich <select id="educatorCategory"><option value="all">Alle Bereiche</option></select></label><button id="educatorPrint">Leitfaden drucken / PDF</button></div><div id="educatorSummary" class="edu-summary"></div><div id="educatorGuide" class="edu-guide"></div></article></section>
+
+    <section id="result" class="hidden"><article class="card"><span class="badge">Auswertung</span><h1 id="scoreTitle"></h1><p id="scoreIntro"></p><div id="categoryScores" class="scores"></div><div id="redFlags" class="redflags"></div><div class="actions"><button id="restartBtn" class="secondary">Neu starten</button><button id="reviewBtn" class="secondary">Mit Eltern/Lehrer besprechen</button><button id="printBtn">Drucken / PDF</button></div></article><article class="card educator"><h2>Hinweis für Erwachsene</h2><p>Besprecht vor allem die Begründungen. Ein Kind kann eine richtige Antwort erraten und trotzdem das Risiko nicht verstanden haben. Besonders wichtig ist, dass es weiß: Bei Erpressung, Grooming, Account-Übernahme oder peinlichen Fehlern immer Hilfe holen – ohne Angst vor Ärger.</p></article></section>
+  </main>
+<script src="app.js"></script><script src="social-pack.js"></script><script src="visual-pack.js"></script><script src="scenario-engine.js"></script><script src="educator.js"></script><script src="v05-pack.js"></script><script src="v051-pack.js"></script><script src="v058-pack.js"></script><script src="v060-guidance.js"></script><script src="v061-shell.js"></script>
+</body>
+</html>
