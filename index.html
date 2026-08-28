@@ -4,9 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#07111f" />
-  <title>Online Survival Test · v0.6.2</title>
-  <link rel="stylesheet" href="styles.css?v=062" />
-  <link rel="stylesheet" href="concept-v062.css?v=062" />
+  <title>Online Survival Test · v0.6.3</title>
+  <link rel="stylesheet" href="styles.css?v=063" />
+  <link rel="stylesheet" href="concept-v062.css?v=063" />
+  <link rel="stylesheet" href="concept-v063.css?v=063" />
 </head>
 <body>
   <main class="shell">
@@ -25,7 +26,7 @@
         <div class="app-brand"><span class="brand-shield">◈</span><strong>ONLINE<br>SURVIVAL TEST</strong></div>
         <div class="app-mode"><span>Modus:</span><b id="modeLabel"></b></div>
         <div class="app-progress"><span>Fortschritt</span><div class="progress"><i id="progressBar"></i></div><b id="progressPercent">0%</b><span id="progressText" class="sr-only"></span></div>
-        <div class="app-top-actions"><span>▱ <b id="markedCount">Merkliste (0)</b></span><span>⚙ Einstellungen</span></div>
+        <div class="app-top-actions"><button id="markedButton" type="button" class="top-action">▱ <b id="markedCount">Merkliste (0)</b></button><button id="settingsButton" type="button" class="top-action">⚙ <b>Einstellungen</b></button></div>
       </header>
 
       <div class="app-layout">
@@ -56,6 +57,6 @@
 
     <section id="result" class="hidden"><article class="card"><span class="badge">Auswertung</span><h1 id="scoreTitle"></h1><p id="scoreIntro"></p><div id="categoryScores" class="scores"></div><div id="redFlags" class="redflags"></div><div class="actions"><button id="restartBtn" class="secondary">Neu starten</button><button id="reviewBtn" class="secondary">Mit Eltern/Lehrer besprechen</button><button id="printBtn">Drucken / PDF</button></div></article><article class="card educator"><h2>Hinweis für Erwachsene</h2><p>Besprecht vor allem die Begründungen. Ein Kind kann eine richtige Antwort erraten und trotzdem das Risiko nicht verstanden haben. Besonders wichtig ist, dass es weiß: Bei Erpressung, Grooming, Account-Übernahme oder peinlichen Fehlern immer Hilfe holen – ohne Angst vor Ärger.</p></article></section>
   </main>
-<script src="app.js"></script><script src="social-pack.js"></script><script src="visual-pack.js"></script><script src="scenario-engine.js"></script><script src="educator.js"></script><script src="v05-pack.js"></script><script src="v051-pack.js"></script><script src="v058-pack.js"></script><script src="v060-guidance.js"></script><script src="v061-shell.js"></script>
+<script src="app.js"></script><script src="social-pack.js"></script><script src="visual-pack.js"></script><script src="scenario-engine.js"></script><script src="educator.js"></script><script src="v05-pack.js"></script><script src="v051-pack.js"></script><script src="v058-pack.js"></script><script src="v060-guidance.js"></script><script src="v061-shell.js?v=063"></script>
 </body>
 </html>
