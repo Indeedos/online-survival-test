@@ -72,6 +72,7 @@ def seed_user(username, display_name, password, role):
 def seed_from_env():
     seed_user(os.getenv('STUDENT1_USER','schwester1'),os.getenv('STUDENT1_NAME','Schwester 1'),os.getenv('STUDENT1_PASSWORD',''),'student')
     seed_user(os.getenv('STUDENT2_USER','schwester2'),os.getenv('STUDENT2_NAME','Schwester 2'),os.getenv('STUDENT2_PASSWORD',''),'student')
+    seed_user(os.getenv('STUDENT3_USER','liah'),os.getenv('STUDENT3_NAME','Liah'),os.getenv('STUDENT3_PASSWORD',''),'student')
     seed_user(os.getenv('ADMIN_USER','admin'),os.getenv('ADMIN_NAME','Admin'),os.getenv('ADMIN_PASSWORD',''),'admin')
 
 @app.on_event('startup')
