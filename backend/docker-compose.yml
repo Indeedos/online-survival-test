@@ -1,0 +1,22 @@
+services:
+  survival-api:
+    build: .
+    container_name: survival-api
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/survival.db
+      FRONTEND_ORIGIN: https://survival.indeedos.cc
+      SESSION_DAYS: 30
+      STUDENT1_USER: ${STUDENT1_USER:-schwester1}
+      STUDENT1_NAME: ${STUDENT1_NAME:-Schwester 1}
+      STUDENT1_PASSWORD: ${STUDENT1_PASSWORD}
+      STUDENT2_USER: ${STUDENT2_USER:-schwester2}
+      STUDENT2_NAME: ${STUDENT2_NAME:-Schwester 2}
+      STUDENT2_PASSWORD: ${STUDENT2_PASSWORD}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_NAME: ${ADMIN_NAME:-Admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:8787:8080"
