@@ -1,4 +1,4 @@
-import json, os, secrets, sqlite3, hashlib
+import json, os, secrets, sqlite3, hashlib, uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -48,6 +48,17 @@ def init_db():
           payload TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS attempts(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          run_id TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          started_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          completed_at TEXT,
+          UNIQUE(user_id,run_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_attempts_user_updated ON attempts(user_id,updated_at DESC);
         ''')
         con.commit()
 
@@ -84,6 +95,22 @@ def current_user(request:Request):
 def admin_user(user=Depends(current_user)):
     if user['role']!='admin': raise HTTPException(403,'Admin erforderlich')
     return user
+
+def answer_count(payload):
+    return len((payload or {}).get('answersByQuestion') or {})
+
+def is_new_run(previous, incoming):
+    if not previous: return True
+    if previous.get('age') != incoming.get('age'): return True
+    if previous.get('completed') and not incoming.get('completed'): return True
+    prev_count=answer_count(previous); new_count=answer_count(incoming)
+    if prev_count >= 3 and new_count < prev_count: return True
+    return False
+
+def prune_attempts(con,user_id):
+    con.execute('''DELETE FROM attempts WHERE user_id=? AND id NOT IN (
+      SELECT id FROM attempts WHERE user_id=? ORDER BY updated_at DESC,id DESC LIMIT 3
+    )''',(user_id,user_id))
 
 @app.get('/health')
 def health(): return {'ok':True}
@@ -130,12 +157,31 @@ def get_progress(user=Depends(current_user)):
 @app.put('/api/progress')
 def put_progress(data:ProgressIn,user=Depends(current_user)):
     if user['role']!='student': raise HTTPException(403,'Nur Lernprofile speichern Testfortschritt')
-    raw=json.dumps(data.payload,ensure_ascii=False,separators=(',',':'))
-    if len(raw.encode())>2_000_000: raise HTTPException(413,'Fortschritt zu groß')
+    incoming=dict(data.payload)
     ts=iso()
     with db() as con:
-        con.execute('INSERT INTO progress(user_id,payload,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at',(user['id'],raw,ts)); con.commit()
-    return {'ok':True,'updated_at':ts}
+        old=con.execute('SELECT payload FROM progress WHERE user_id=?',(user['id'],)).fetchone()
+        previous=json.loads(old['payload']) if old else None
+        run_id=str(uuid.uuid4()) if is_new_run(previous,incoming) else (previous.get('_runId') or str(uuid.uuid4()))
+        incoming['_runId']=run_id
+        raw=json.dumps(incoming,ensure_ascii=False,separators=(',',':'))
+        if len(raw.encode())>2_000_000: raise HTTPException(413,'Fortschritt zu groß')
+        started_at=(previous or {}).get('_runStartedAt') if not is_new_run(previous,incoming) else None
+        started_at=started_at or ts
+        incoming['_runStartedAt']=started_at
+        raw=json.dumps(incoming,ensure_ascii=False,separators=(',',':'))
+        completed_at=ts if incoming.get('completed') else None
+        con.execute('INSERT INTO progress(user_id,payload,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at',(user['id'],raw,ts))
+        con.execute('''INSERT INTO attempts(user_id,run_id,payload,started_at,updated_at,completed_at)
+          VALUES(?,?,?,?,?,?)
+          ON CONFLICT(user_id,run_id) DO UPDATE SET
+            payload=excluded.payload,
+            updated_at=excluded.updated_at,
+            completed_at=CASE WHEN excluded.completed_at IS NOT NULL THEN excluded.completed_at ELSE attempts.completed_at END''',
+          (user['id'],run_id,raw,started_at,ts,completed_at))
+        prune_attempts(con,user['id'])
+        con.commit()
+    return {'ok':True,'updated_at':ts,'run_id':run_id}
 
 @app.delete('/api/progress')
 def clear_progress(user=Depends(current_user)):
@@ -148,8 +194,12 @@ def clear_progress(user=Depends(current_user)):
 def admin_users(user=Depends(admin_user)):
     with db() as con:
         rows=con.execute("""SELECT u.id,u.username,u.display_name,p.updated_at,p.payload FROM users u LEFT JOIN progress p ON p.user_id=u.id WHERE u.role='student' ORDER BY u.id""").fetchall()
-    out=[]
-    for r in rows:
-        payload=json.loads(r['payload']) if r['payload'] else None
-        out.append({'id':r['id'],'username':r['username'],'display_name':r['display_name'],'updated_at':r['updated_at'],'payload':payload})
+        out=[]
+        for r in rows:
+            payload=json.loads(r['payload']) if r['payload'] else None
+            attempts_rows=con.execute('''SELECT id,run_id,payload,started_at,updated_at,completed_at FROM attempts WHERE user_id=? ORDER BY updated_at DESC,id DESC LIMIT 3''',(r['id'],)).fetchall()
+            attempts=[]
+            for a in attempts_rows:
+                attempts.append({'id':a['id'],'run_id':a['run_id'],'started_at':a['started_at'],'updated_at':a['updated_at'],'completed_at':a['completed_at'],'payload':json.loads(a['payload'])})
+            out.append({'id':r['id'],'username':r['username'],'display_name':r['display_name'],'updated_at':r['updated_at'],'payload':payload,'attempts':attempts})
     return {'users':out}
