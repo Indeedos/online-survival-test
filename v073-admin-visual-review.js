@@ -61,17 +61,17 @@
     if(task?.t==='imagegrid'&&value?.imagegrid)return imageGridVisual(task,value);
     return '';
   }
+  function enhanceOneRow(row,payload){
+    if(!row||!payload||row.querySelector('.admin-visual-review'))return;
+    const q=row.querySelector('.admin-answer-head b')?.textContent?.trim();
+    const map=payload.answersByQuestion||{};
+    if(!q||!Object.prototype.hasOwnProperty.call(map,q))return;
+    const html=visualFor(findTask(q),map[q]);
+    if(html)row.insertAdjacentHTML('beforeend',html);
+  }
   function enhanceRows(container,payload){
     if(!container||!payload)return;
-    const answersMap=payload.answersByQuestion||{};
-    container.querySelectorAll('.admin-answer-row').forEach(row=>{
-      if(row.querySelector('.admin-visual-review'))return;
-      const q=row.querySelector('.admin-answer-head b')?.textContent?.trim();
-      if(!q||!Object.prototype.hasOwnProperty.call(answersMap,q))return;
-      const task=findTask(q),html=visualFor(task,answersMap[q]);
-      if(!html)return;
-      row.insertAdjacentHTML('beforeend',html);
-    });
+    container.querySelectorAll('.admin-answer-row').forEach(row=>enhanceOneRow(row,payload));
   }
   function selectedHistoryPayload(card,user){
     const sel=card.querySelector('.admin-run-select');
@@ -81,17 +81,9 @@
   function enhanceCard(card,user){
     const detail=card.querySelector('.admin-profile-detail');
     if(!detail)return;
-    // Current/active progress rows (outside archived run review).
-    detail.querySelectorAll(':scope > .admin-answer-toolbar, :scope > .admin-answer-row');
-    const currentRows=[...detail.querySelectorAll('.admin-answer-row')].filter(r=>!r.closest('.admin-run-review'));
-    if(currentRows.length&&user?.payload){
-      const holder=document.createElement('div');
-      currentRows[0].parentNode?.insertBefore(holder,currentRows[0]);
-      currentRows.forEach(r=>holder.appendChild(r));
-      enhanceRows(holder,user.payload);
-      while(holder.firstChild)holder.parentNode.insertBefore(holder.firstChild,holder);
-      holder.remove();
-    }
+    [...detail.querySelectorAll('.admin-answer-row')]
+      .filter(row=>!row.closest('.admin-run-review'))
+      .forEach(row=>enhanceOneRow(row,user?.payload));
     const review=detail.querySelector('.admin-run-review');
     if(review)enhanceRows(review,selectedHistoryPayload(card,user));
   }
