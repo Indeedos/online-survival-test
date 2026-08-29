@@ -19,6 +19,8 @@
     if(idx>=0)x.o[idx]=newText;
   }
 
+  const freeSkins=task('Ein Freund schickt dir unerwartet einen Link zu „kostenlosen Skins“. Was prüfst du zuerst?');
+  replaceOption(freeSkins,'Ob die Domain wirklich zur offiziellen Seite gehört und ob die Nachricht typisch für den Freund ist','Ob der Link wirklich zur offiziellen Seite gehört und ob die Nachricht typisch für den Freund ist');
   rename(
     'Wenn du selbst nichts Beleidigendes schreibst, aber beleidigende Posts likest und weiterleitest, bist du völlig unbeteiligt.',
     'Wenn du selber nicht beleidigst, aber beleidigende Posts likest und weiterleitest, bist du unschuldig.'
