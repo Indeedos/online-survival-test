@@ -1,7 +1,13 @@
-// v0.7.5 — current question totals + require every question before completion
+// v0.7.6 — current question totals + require every question before completion
 (function(){
   function taskCountForAge(a){
     try{return Array.isArray(Q)&&Number.isFinite(+a)?Q.filter(x=>x&&+x.a<=+a).length:0}catch{return 0}
+  }
+  function defaultTotal(){
+    // A profile without progress has no stored age yet. The dashboard previously
+    // fell back to the legacy hard-coded 90. Show the current full/Advanced test
+    // total until a run supplies its actual age.
+    return taskCountForAge(13)||0;
   }
   function answered(idx){
     const x=items?.[idx],a=answers?.[idx];
@@ -27,7 +33,6 @@
     setTimeout(()=>box.remove(),7000);
   }
 
-  // Wrap the fully composed finish() function after all scoring/review patches.
   if(typeof window.finish==='function'){
     const previousFinish=window.finish;
     window.finish=function(){
@@ -45,17 +50,13 @@
     };
   }
 
-  // The admin payload may contain an old totalQuestions value from a run that
-  // started before questions were removed. Always display the total represented
-  // by the currently deployed question set for that age.
   function fixAdminTotals(){
     const root=document.querySelector('#adminMini');
     if(!root||root.classList.contains('hidden'))return;
     root.querySelectorAll('.admin-profile-card').forEach(card=>{
       const ageText=card.querySelector('.admin-profile-name span')?.textContent||'';
       const match=ageText.match(/(11|13)\s*Jahre/);
-      if(!match)return;
-      const total=taskCountForAge(+match[1]);
+      const total=match?taskCountForAge(+match[1]):defaultTotal();
       if(!total)return;
       const stats=card.querySelector('.admin-profile-stats');
       const progress=stats?.querySelector('strong');
