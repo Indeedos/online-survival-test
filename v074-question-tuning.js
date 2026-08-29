@@ -21,6 +21,8 @@
 
   const freeSkins=task('Ein Freund schickt dir unerwartet einen Link zu „kostenlosen Skins“. Was prüfst du zuerst?');
   replaceOption(freeSkins,'Ob die Domain wirklich zur offiziellen Seite gehört und ob die Nachricht typisch für den Freund ist','Ob der Link wirklich zur offiziellen Seite gehört und ob die Nachricht typisch für den Freund ist');
+  const voiceMessage=task('Was ist bei einer überraschenden Sprachnachricht einer bekannten Person sinnvoll?');
+  replaceOption(voiceMessage,'Stimme sicher = echt','Stimme echt = sicher');
   rename(
     'Wenn du selbst nichts Beleidigendes schreibst, aber beleidigende Posts likest und weiterleitest, bist du völlig unbeteiligt.',
     'Wenn du selber nicht beleidigst, aber beleidigende Posts likest und weiterleitest, bist du unschuldig.'
