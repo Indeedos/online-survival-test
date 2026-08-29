@@ -1,4 +1,4 @@
-// v0.6.9 — persistent profiles + detailed admin progress dashboard
+// v0.7.0 — persistent profiles + detailed admin analysis dashboard
 (function(){
   const API='https://api.survival.indeedos.cc';
   let account=null, remoteProgress=null, saveTimer=null, restoring=false;
@@ -131,25 +131,79 @@
     const red=Array.isArray(task.rf)&&a.some(v=>task.rf.includes(v));
     return {kind:red?'danger':(correct?'correct':'wrong'),label:red?'Red Flag':(correct?'Richtig':'Falsch')};
   }
-  function renderAnswerRows(payload){
-    const entries=Object.entries(payload?.answersByQuestion||{});
-    if(!entries.length)return '<div class="admin-empty">Noch keine Antworten gespeichert.</div>';
-    return entries.map(([q,value],idx)=>{
-      const task=findTask(q),st=answerState(value,task),expected=expectedAnswer(task);
-      return `<article class="admin-answer-row"><div class="admin-answer-head"><span class="admin-qno">${idx+1}</span><div><div class="admin-answer-meta">${esc(task?.c||'Aufgabe')}${task?.d?` · ${esc(task.d)}`:''}</div><b>${esc(q)}</b></div><span class="admin-answer-state ${st.kind}">${st.label}</span></div><div class="admin-answer-body"><div><small>Geantwortet</small><p>${esc(readableAnswer(value,task))}</p></div>${expected?`<div><small>Erwartet</small><p>${esc(expected)}</p></div>`:''}</div></article>`;
+  function analysePayload(payload){
+    const remembered=new Set(payload?.remembered||[]);
+    const rows=Object.entries(payload?.answersByQuestion||{}).map(([q,value],idx)=>{
+      const task=findTask(q),state=answerState(value,task);
+      return {q,value,idx,task,state,remembered:remembered.has(q),category:task?.c||'Spezialaufgaben'};
+    });
+    const totals={correct:0,wrong:0,danger:0,review:0};
+    const categories={};
+    rows.forEach(r=>{
+      totals[r.state.kind]=(totals[r.state.kind]||0)+1;
+      if(!categories[r.category])categories[r.category]={answered:0,correct:0,wrong:0,danger:0,review:0};
+      categories[r.category].answered++;
+      categories[r.category][r.state.kind]=(categories[r.category][r.state.kind]||0)+1;
+    });
+    return {rows,totals,categories,remembered};
+  }
+  function renderCategorySummary(analysis){
+    const entries=Object.entries(analysis.categories);
+    if(!entries.length)return '';
+    return `<section class="admin-section"><div class="admin-section-title"><div><span class="admin-kicker">KOMPETENZBEREICHE</span><h4>Kategorie-Auswertung</h4></div><small>Bewertung nur dort automatisch, wo ein eindeutiger Lösungsschlüssel vorliegt.</small></div><div class="admin-category-grid">${entries.map(([name,s])=>{
+      const auto=s.correct+s.wrong+s.danger,score=auto?Math.round(s.correct/auto*100):null;
+      return `<div class="admin-category-card"><div class="admin-category-top"><b>${esc(name)}</b><strong>${score==null?'–':score+'%'}</strong></div><div class="admin-category-bar"><i style="width:${score||0}%"></i></div><div class="admin-category-counts"><span class="ok">${s.correct} richtig</span><span class="bad">${s.wrong} falsch</span><span class="critical">${s.danger} kritisch</span>${s.review?`<span>${s.review} prüfen</span>`:''}</div></div>`;
+    }).join('')}</div></section>`;
+  }
+  function renderRedFlagSummary(analysis){
+    const flags=analysis.rows.filter(r=>r.state.kind==='danger');
+    if(!flags.length)return `<section class="admin-redflag-summary clear"><div><span class="admin-kicker">RED FLAGS</span><b>Keine automatisch erkannten kritischen Antworten</b></div><span class="admin-redflag-count">0</span></section>`;
+    return `<section class="admin-redflag-summary"><div class="admin-redflag-heading"><div><span class="admin-kicker">RED FLAGS</span><b>${flags.length} kritische Entscheidung${flags.length===1?'':'en'} genauer besprechen</b></div><span class="admin-redflag-count">${flags.length}</span></div><div class="admin-redflag-list">${flags.map(r=>`<div><strong>${esc(r.q)}</strong><span>${esc(readableAnswer(r.value,r.task))}</span></div>`).join('')}</div></section>`;
+  }
+  function renderOverviewStats(analysis,payload){
+    const t=analysis.totals;
+    return `<div class="admin-analysis-stats"><div><strong>${t.correct}</strong><span>Richtig</span></div><div><strong>${t.wrong}</strong><span>Falsch</span></div><div class="critical"><strong>${t.danger}</strong><span>Red Flags</span></div><div><strong>${t.review}</strong><span>Manuell prüfen</span></div><div><strong>${payload?.remembered?.length||0}</strong><span>Merkliste</span></div></div>`;
+  }
+  function renderAnswerRows(payload,analysis){
+    const rows=analysis?.rows||[];
+    if(!rows.length)return '<div class="admin-empty">Noch keine Antworten gespeichert.</div>';
+    return rows.map(r=>{
+      const expected=expectedAnswer(r.task);
+      return `<article class="admin-answer-row" data-state="${r.state.kind}" data-remembered="${r.remembered?'1':'0'}"><div class="admin-answer-head"><span class="admin-qno">${r.idx+1}</span><div><div class="admin-answer-meta">${esc(r.category)}${r.task?.d?` · ${esc(r.task.d)}`:''}${r.remembered?' · <span class="remembered-label">Merkliste</span>':''}</div><b>${esc(r.q)}</b></div><span class="admin-answer-state ${r.state.kind}">${r.state.label}</span></div><div class="admin-answer-body"><div><small>Geantwortet</small><p>${esc(readableAnswer(r.value,r.task))}</p></div>${expected?`<div><small>Erwartet</small><p>${esc(expected)}</p></div>`:''}</div></article>`;
     }).join('');
+  }
+  function renderFilters(analysis){
+    const t=analysis.totals,remembered=analysis.rows.filter(r=>r.remembered).length;
+    return `<div class="admin-answer-toolbar"><div><span class="admin-kicker">ANTWORTEN</span><h4>Detailprüfung</h4></div><div class="admin-filter-group" role="group" aria-label="Antworten filtern"><button type="button" class="admin-filter active" data-filter="all">Alle <b>${analysis.rows.length}</b></button><button type="button" class="admin-filter" data-filter="wrong">Falsch <b>${t.wrong}</b></button><button type="button" class="admin-filter critical" data-filter="danger">Kritisch <b>${t.danger}</b></button><button type="button" class="admin-filter" data-filter="review">Prüfen <b>${t.review}</b></button><button type="button" class="admin-filter" data-filter="remembered">Merkliste <b>${remembered}</b></button></div></div><div class="admin-filter-empty hidden">Für diesen Filter gibt es aktuell keine Antworten.</div>`;
+  }
+  function bindProfileFilters(root){
+    root.querySelectorAll('.admin-profile-detail').forEach(detail=>{
+      detail.querySelectorAll('.admin-filter').forEach(btn=>btn.addEventListener('click',()=>{
+        const filter=btn.dataset.filter;
+        detail.querySelectorAll('.admin-filter').forEach(b=>b.classList.toggle('active',b===btn));
+        let visible=0;
+        detail.querySelectorAll('.admin-answer-row').forEach(row=>{
+          const show=filter==='all'||(filter==='remembered'?row.dataset.remembered==='1':row.dataset.state===filter);
+          row.classList.toggle('hidden',!show);if(show)visible++;
+        });
+        detail.querySelector('.admin-filter-empty')?.classList.toggle('hidden',visible!==0);
+      }));
+    });
   }
   async function renderAdmin(){
     if(!account||account.role!=='admin')return;
     try{
       const out=await api('/api/admin/users');
       if(!account||account.role!=='admin')return;
+      const users=out.users||[];
+      const started=users.filter(u=>u.payload).length,finished=users.filter(u=>u.payload?.completed).length,allFlags=users.reduce((n,u)=>n+analysePayload(u.payload).totals.danger,0);
       adminMini.classList.remove('hidden');
-      adminMini.innerHTML=`<div class="admin-dashboard-head"><div><span class="admin-kicker">ADMIN-DASHBOARD</span><h3>Lernfortschritt</h3><p>Profil öffnen, um Antworten und auffällige Entscheidungen im Detail zu prüfen.</p></div><button type="button" class="secondary admin-refresh">Aktualisieren</button></div><div class="admin-profile-list">${out.users.map(u=>{
-        const p=u.payload||null,answered=p?Object.keys(p.answersByQuestion||{}).length:0,total=p?.totalQuestions||90,percent=total?Math.min(100,Math.round(answered/total*100)):0,remembered=p?.remembered?.length||0;
-        return `<details class="admin-profile-card"><summary><div class="admin-profile-main"><div class="admin-profile-name"><b>${esc(u.display_name)}</b><span>${p?`${p.age||'–'} Jahre`:'Noch nicht gestartet'}</span></div><div class="admin-progress-line"><i style="width:${percent}%"></i></div><div class="admin-profile-stats"><strong>${answered} / ${total}</strong><span>${percent}%</span>${p?.completed?'<em class="done">Abgeschlossen</em>':'<em>In Arbeit</em>'}</div><small>${u.updated_at?'Zuletzt gespeichert: '+new Date(u.updated_at).toLocaleString('de-DE'):'Noch kein gespeicherter Fortschritt'}${remembered?` · ${remembered} auf Merkliste`:''}</small></div><span class="admin-chevron">⌄</span></summary><div class="admin-profile-detail">${p?.currentQuestion?`<div class="admin-current-q"><small>Aktuelle Position</small><b>${esc(p.currentQuestion)}</b></div>`:''}<div class="admin-answer-list">${renderAnswerRows(p)}</div></div></details>`;
+      adminMini.innerHTML=`<div class="admin-dashboard-head"><div><span class="admin-kicker">ADMIN-DASHBOARD</span><h3>Lernfortschritt & Auswertung</h3><p>Profile öffnen, um Kompetenzbereiche, kritische Entscheidungen und einzelne Antworten zu prüfen.</p></div><button type="button" class="secondary admin-refresh">Aktualisieren</button></div><div class="admin-global-stats"><div><strong>${started}/${users.length}</strong><span>gestartet</span></div><div><strong>${finished}</strong><span>abgeschlossen</span></div><div class="critical"><strong>${allFlags}</strong><span>Red Flags gesamt</span></div></div><div class="admin-profile-list">${users.map(u=>{
+        const p=u.payload||null,analysis=analysePayload(p),answered=analysis.rows.length,total=p?.totalQuestions||90,percent=total?Math.min(100,Math.round(answered/total*100)):0,remembered=p?.remembered?.length||0;
+        return `<details class="admin-profile-card"><summary><div class="admin-profile-main"><div class="admin-profile-name"><b>${esc(u.display_name)}</b><span>${p?`${p.age||'–'} Jahre`:'Noch nicht gestartet'}</span></div><div class="admin-progress-line"><i style="width:${percent}%"></i></div><div class="admin-profile-stats"><strong>${answered} / ${total}</strong><span>${percent}%</span>${p?.completed?'<em class="done">Abgeschlossen</em>':'<em>In Arbeit</em>'}${analysis.totals.danger?`<em class="danger">${analysis.totals.danger} Red Flag${analysis.totals.danger===1?'':'s'}</em>`:''}</div><small>${u.updated_at?'Zuletzt gespeichert: '+new Date(u.updated_at).toLocaleString('de-DE'):'Noch kein gespeicherter Fortschritt'}${remembered?` · ${remembered} auf Merkliste`:''}</small></div><span class="admin-chevron">⌄</span></summary><div class="admin-profile-detail">${p?.currentQuestion?`<div class="admin-current-q"><small>Aktuelle Position</small><b>${esc(p.currentQuestion)}</b></div>`:''}${p?renderOverviewStats(analysis,p):''}${p?renderCategorySummary(analysis):''}${p?renderRedFlagSummary(analysis):''}<section class="admin-section admin-answer-section">${renderFilters(analysis)}<div class="admin-answer-list">${renderAnswerRows(p,analysis)}</div></section></div></details>`;
       }).join('')}</div>`;
       adminMini.querySelector('.admin-refresh')?.addEventListener('click',renderAdmin);
+      bindProfileFilters(adminMini);
     }catch(ex){adminMini.classList.remove('hidden');adminMini.innerHTML=`<div class="admin-empty">Admin-Daten konnten nicht geladen werden: ${esc(ex.message||'Unbekannter Fehler')}</div>`}
   }
 
