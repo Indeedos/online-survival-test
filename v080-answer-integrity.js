@@ -13,10 +13,7 @@
       return hit.id;
     });
   }
-  function idForText(task,text){
-    const hit=canonical(task).find(x=>x.text===String(text));
-    return hit?.id||null;
-  }
+  function idForText(task,text){const hit=canonical(task).find(x=>x.text===String(text));return hit?.id||null}
   function selectedIndexes(task,a){
     if(task?.t==='multi')return Array.isArray(a?.choices)?a.choices.filter(Number.isInteger):[];
     return Number.isInteger(a?.choice)?[a.choice]:[];
@@ -36,22 +33,11 @@
     const byId=new Map(canonical(task).map(x=>[x.id,x.text]));
     const expectedIds=[...(task._integrityCorrectIds||[])];
     const redFlagIds=[...(task._integrityRedFlagIds||[])];
-    return {
-      v:2,
-      selectedIds,
-      selectedTexts,
-      expectedIds,
-      expectedTexts:expectedIds.map(id=>byId.get(id)).filter(Boolean),
-      redFlagIds,
-      redFlagTexts:redFlagIds.map(id=>byId.get(id)).filter(Boolean),
-      optionOrderIds:ids.filter(Boolean),
-      optionOrderTexts:(task.o||[]).map(String),
-      savedAt:new Date().toISOString()
-    };
+    return {v:1,selectedIds,selectedTexts,expectedIds,expectedTexts:expectedIds.map(id=>byId.get(id)).filter(Boolean),redFlagIds,redFlagTexts:redFlagIds.map(id=>byId.get(id)).filter(Boolean),optionOrderIds:ids.filter(Boolean),optionOrderTexts:(task.o||[]).map(String),savedAt:new Date().toISOString()};
   }
   function enrich(task,a,snapshot=null){const meta=integrityFor(task,a,snapshot);if(meta)a._integrity=meta}
   function remap(task,a){
-    const meta=a?._integrity;if(!task||!a||![1,2].includes(meta?.v)||!Array.isArray(meta.selectedIds))return;
+    const meta=a?._integrity;if(!task||!a||meta?.v!==1||!Array.isArray(meta.selectedIds))return;
     const ids=currentIds(task),mapped=meta.selectedIds.map(id=>ids.indexOf(id)).filter(i=>i>=0);
     if(task.t==='multi')a.choices=mapped;else a.choice=mapped.length?mapped[0]:null;
   }
@@ -59,14 +45,9 @@
 
   document.addEventListener('change',e=>{
     if(!e.target?.matches?.('#answers input[name="q"]')||typeof i!=='number')return;
-    const task=items?.[i];
-    if(!isChoiceTask(task))return;
+    const task=items?.[i];if(!isChoiceTask(task))return;
     dirty.add(i);
-    const snap=domSelection(task);
-    if(snap)pending.set(i,snap);
-    // Save after the native/UI handlers have settled. The snapshot above is the
-    // exact label text the user clicked, so randomized numeric indices can never
-    // change what is later displayed in Admin.
+    const snap=domSelection(task);if(snap)pending.set(i,snap);
     setTimeout(()=>{try{if(typeof window.save==='function')window.save()}catch{}},0);
   },true);
 
@@ -93,9 +74,9 @@
 
   window.__answerIntegrity={currentIds,remap,isChoiceTask,enrich,state(task,value){
     if(!isChoiceTask(task))return null;const meta=value?._integrity;
-    if(![1,2].includes(meta?.v))return {kind:'review',label:'Nicht verifizierbar',legacy:true};
+    if(meta?.v!==1)return {kind:'review',label:'Nicht verifizierbar',legacy:true};
     const chosen=[...(meta.selectedIds||[])].sort(),expected=[...(meta.expectedIds||[])].sort();
     const correct=chosen.length===expected.length&&chosen.every((v,n)=>v===expected[n]),red=(meta.redFlagIds||[]).some(id=>chosen.includes(id));
     return {kind:red?'danger':correct?'correct':'wrong',label:red?'Red Flag':correct?'Richtig':'Falsch',legacy:false};
-  },selectedText(value){const meta=value?._integrity;return [1,2].includes(meta?.v)&&Array.isArray(meta.selectedTexts)?meta.selectedTexts.join(' · '):null},expectedText(value){const meta=value?._integrity;return [1,2].includes(meta?.v)&&Array.isArray(meta.expectedTexts)?meta.expectedTexts.join(' · '):null}};
+  },selectedText(value){const meta=value?._integrity;return meta?.v===1&&Array.isArray(meta.selectedTexts)?meta.selectedTexts.join(' · '):null},expectedText(value){const meta=value?._integrity;return meta?.v===1&&Array.isArray(meta.expectedTexts)?meta.expectedTexts.join(' · '):null}};
 })();
