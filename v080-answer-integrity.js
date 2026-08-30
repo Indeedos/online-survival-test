@@ -1,6 +1,7 @@
-// v0.8.1 — persist semantic answer identity so randomized option order cannot corrupt restores/reviews
+// v0.8.2 — persist the exact answer shown/selected in the UI, independent of randomized indices
 (function(){
   const dirty=new Set();
+  const pending=new Map();
 
   function canonical(task){return Array.isArray(task?._integrityCanonical)?task._integrityCanonical:[]}
   function currentIds(task){
@@ -12,23 +13,45 @@
       return hit.id;
     });
   }
+  function idForText(task,text){
+    const hit=canonical(task).find(x=>x.text===String(text));
+    return hit?.id||null;
+  }
   function selectedIndexes(task,a){
     if(task?.t==='multi')return Array.isArray(a?.choices)?a.choices.filter(Number.isInteger):[];
     return Number.isInteger(a?.choice)?[a.choice]:[];
   }
-  function integrityFor(task,a){
+  function domSelection(task){
+    const checked=[...document.querySelectorAll('#answers input[name="q"]:checked')];
+    if(!checked.length)return null;
+    const texts=checked.map(el=>el.closest('label')?.querySelector('span')?.textContent?.trim()||'').filter(Boolean);
+    const ids=texts.map(text=>idForText(task,text)).filter(Boolean);
+    return {texts,ids};
+  }
+  function integrityFor(task,a,snapshot=null){
     if(!task||!Array.isArray(task.o)||!a)return null;
     const ids=currentIds(task),selected=selectedIndexes(task,a);
-    const selectedIds=selected.map(i=>ids[i]).filter(Boolean);
-    const selectedTexts=selected.map(i=>task.o[i]).filter(v=>v!=null).map(String);
+    const selectedTexts=snapshot?.texts?.length?[...snapshot.texts]:selected.map(i=>task.o[i]).filter(v=>v!=null).map(String);
+    const selectedIds=snapshot?.ids?.length?[...snapshot.ids]:selected.map(i=>ids[i]).filter(Boolean);
     const byId=new Map(canonical(task).map(x=>[x.id,x.text]));
     const expectedIds=[...(task._integrityCorrectIds||[])];
     const redFlagIds=[...(task._integrityRedFlagIds||[])];
-    return {v:1,selectedIds,selectedTexts,expectedIds,expectedTexts:expectedIds.map(id=>byId.get(id)).filter(Boolean),redFlagIds,redFlagTexts:redFlagIds.map(id=>byId.get(id)).filter(Boolean),optionOrderIds:ids.filter(Boolean),optionOrderTexts:(task.o||[]).map(String),savedAt:new Date().toISOString()};
+    return {
+      v:2,
+      selectedIds,
+      selectedTexts,
+      expectedIds,
+      expectedTexts:expectedIds.map(id=>byId.get(id)).filter(Boolean),
+      redFlagIds,
+      redFlagTexts:redFlagIds.map(id=>byId.get(id)).filter(Boolean),
+      optionOrderIds:ids.filter(Boolean),
+      optionOrderTexts:(task.o||[]).map(String),
+      savedAt:new Date().toISOString()
+    };
   }
-  function enrich(task,a){const meta=integrityFor(task,a);if(meta)a._integrity=meta}
+  function enrich(task,a,snapshot=null){const meta=integrityFor(task,a,snapshot);if(meta)a._integrity=meta}
   function remap(task,a){
-    const meta=a?._integrity;if(!task||!a||meta?.v!==1||!Array.isArray(meta.selectedIds))return;
+    const meta=a?._integrity;if(!task||!a||![1,2].includes(meta?.v)||!Array.isArray(meta.selectedIds))return;
     const ids=currentIds(task),mapped=meta.selectedIds.map(id=>ids.indexOf(id)).filter(i=>i>=0);
     if(task.t==='multi')a.choices=mapped;else a.choice=mapped.length?mapped[0]:null;
   }
@@ -36,10 +59,14 @@
 
   document.addEventListener('change',e=>{
     if(!e.target?.matches?.('#answers input[name="q"]')||typeof i!=='number')return;
+    const task=items?.[i];
+    if(!isChoiceTask(task))return;
     dirty.add(i);
-    // Capture the changed DOM selection immediately. This is intentionally deferred
-    // until the quiz's own change handlers have finished, then save() both writes the
-    // answer object and attaches semantic metadata before the account autosave fires.
+    const snap=domSelection(task);
+    if(snap)pending.set(i,snap);
+    // Save after the native/UI handlers have settled. The snapshot above is the
+    // exact label text the user clicked, so randomized numeric indices can never
+    // change what is later displayed in Admin.
     setTimeout(()=>{try{if(typeof window.save==='function')window.save()}catch{}},0);
   },true);
 
@@ -52,12 +79,12 @@
     const previousSave=window.save;
     window.save=function(){
       const idx=typeof i==='number'?i:null,task=idx!=null?items?.[idx]:null,before=idx!=null?answers?.[idx]:null;
-      const hadIntegrity=!!before?._integrity,wasLegacy=!!before&&isChoiceTask(task)&&!hadIntegrity,userChanged=idx!=null&&dirty.has(idx);
+      const hadIntegrity=!!before?._integrity,wasLegacy=!!before&&isChoiceTask(task)&&!hadIntegrity,userChanged=idx!=null&&dirty.has(idx),snap=idx!=null?pending.get(idx):null;
       const result=previousSave.apply(this,arguments);
       try{
         if(idx!=null&&isChoiceTask(task)){
-          if(wasLegacy&&!userChanged)answers[idx]=before;else enrich(task,answers?.[idx]);
-          dirty.delete(idx);
+          if(wasLegacy&&!userChanged)answers[idx]=before;else enrich(task,answers?.[idx],snap);
+          dirty.delete(idx);pending.delete(idx);
         }
       }catch{}
       return result;
@@ -66,9 +93,9 @@
 
   window.__answerIntegrity={currentIds,remap,isChoiceTask,enrich,state(task,value){
     if(!isChoiceTask(task))return null;const meta=value?._integrity;
-    if(meta?.v!==1)return {kind:'review',label:'Nicht verifizierbar',legacy:true};
+    if(![1,2].includes(meta?.v))return {kind:'review',label:'Nicht verifizierbar',legacy:true};
     const chosen=[...(meta.selectedIds||[])].sort(),expected=[...(meta.expectedIds||[])].sort();
     const correct=chosen.length===expected.length&&chosen.every((v,n)=>v===expected[n]),red=(meta.redFlagIds||[]).some(id=>chosen.includes(id));
     return {kind:red?'danger':correct?'correct':'wrong',label:red?'Red Flag':correct?'Richtig':'Falsch',legacy:false};
-  },selectedText(value){const meta=value?._integrity;return meta?.v===1&&Array.isArray(meta.selectedTexts)?meta.selectedTexts.join(' · '):null},expectedText(value){const meta=value?._integrity;return meta?.v===1&&Array.isArray(meta.expectedTexts)?meta.expectedTexts.join(' · '):null}};
+  },selectedText(value){const meta=value?._integrity;return [1,2].includes(meta?.v)&&Array.isArray(meta.selectedTexts)?meta.selectedTexts.join(' · '):null},expectedText(value){const meta=value?._integrity;return [1,2].includes(meta?.v)&&Array.isArray(meta.expectedTexts)?meta.expectedTexts.join(' · '):null}};
 })();
