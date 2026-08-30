@@ -20,7 +20,16 @@
     const red=(meta.redFlagIds||[]).some(id=>a.includes(id));
     return {kind:red?'danger':correct?'correct':'wrong',label:red?'Red Flag':correct?'Richtig':'Falsch',legacy:false};
   }
-  function stateFor(task,value){return choiceState(task,value)||{kind:'review',label:'Prüfen',legacy:false}}
+  function stateFor(task,value){
+    const choice=choiceState(task,value);if(choice)return choice;
+    if(task?.t==='imagegrid'&&value?.imagegrid&&Array.isArray(task.v?.people)){
+      const people=task.v.people,answered=people.filter(p=>value.imagegrid[p.id]).length;
+      if(!answered)return {kind:'review',label:'Prüfen',legacy:false};
+      const correct=people.filter(p=>value.imagegrid[p.id]===p.kind).length;
+      return {kind:correct===people.length?'correct':'wrong',label:correct===people.length?'Richtig':'Falsch',legacy:false};
+    }
+    return {kind:'review',label:'Prüfen',legacy:false};
+  }
   function selectedText(task,value){
     const meta=value?._integrity;
     if(choiceTask(task)){
@@ -76,6 +85,17 @@
       row.appendChild(note);
     }
   }
+  function patchCategories(detail,analysis){
+    detail.querySelectorAll('.admin-category-card').forEach(card=>{
+      const name=card.querySelector('.admin-category-top b')?.textContent?.trim();
+      const s=analysis.categories[name];if(!s)return;
+      const auto=s.correct+s.wrong+s.danger,score=auto?Math.round(s.correct/auto*100):null;
+      const scoreEl=card.querySelector('.admin-category-top strong');if(scoreEl)scoreEl.textContent=score==null?'–':score+'%';
+      const bar=card.querySelector('.admin-category-bar i');if(bar)bar.style.width=(score||0)+'%';
+      const counts=card.querySelector('.admin-category-counts');
+      if(counts)counts.innerHTML=`<span class="ok">${s.correct} richtig</span><span class="bad">${s.wrong} falsch</span><span class="critical">${s.danger} kritisch</span>${s.review?`<span>${s.review} prüfen</span>`:''}`;
+    });
+  }
   function patchCurrentCard(card,user){
     const payload=user?.payload;if(!payload)return;
     const detail=card.querySelector('.admin-profile-detail');if(!detail)return;
@@ -83,6 +103,7 @@
     const a=analyse(payload),t=a.totals;
     const stats=detail.querySelector('.admin-analysis-stats');
     if(stats){const vals=[t.correct,t.wrong,t.danger,t.review,payload?.remembered?.length||0];[...stats.children].forEach((box,n)=>{const strong=box.querySelector('strong');if(strong&&vals[n]!=null)strong.textContent=vals[n]})}
+    patchCategories(detail,a);
     const red=detail.querySelector('.admin-redflag-summary');
     if(red){
       const flags=a.rows.filter(r=>r.state.kind==='danger');
@@ -104,8 +125,8 @@
   function rebuildArchive(card,user){
     const detail=card.querySelector('.admin-profile-detail');if(!detail)return;
     detail.querySelector('.admin-run-history')?.remove();
-    const currentId=user?.payload?._runId;
-    const runs=(user?.attempts||[]).filter(r=>r.run_id!==currentId&&r?.payload?._runId!==currentId).slice(0,3);
+    const currentId=user?.current_run_id||user?.payload?._runId;
+    const runs=(user?.attempts||[]).filter(r=>!r.is_current&&r.run_id!==currentId&&r?.payload?._runId!==currentId).slice(0,3);
     if(!runs.length)return;
     const wrap=document.createElement('section');wrap.className='admin-run-history admin-run-history-archive';
     wrap.innerHTML=`<div class="admin-run-history-head"><div><span class="admin-kicker">FRÜHERE DURCHLÄUFE</span><h4>Archivierte Sitzungen</h4></div><label>Nachprüfen <select class="admin-run-select">${runs.map((r,n)=>`<option value="${esc(r.run_id)}">${n+1}. ${r.payload?.completed?'Abgeschlossen':'In Arbeit'} · ${esc(fmt(r.updated_at))}</option>`).join('')}</select></label></div><div class="admin-run-review"></div>`;
@@ -113,7 +134,7 @@
     const draw=()=>{
       const run=runs.find(r=>r.run_id===sel.value);if(!run)return;
       const p=run.payload||{},entries=Object.entries(p.answersByQuestion||{}),a=analyse(p);
-      review.innerHTML=`<div class="admin-history-summary"><b>${entries.length} Antworten</b><span>${p.age?p.age+' Jahre · ':''}${p.completed?'Abgeschlossen':'Nicht abgeschlossen'} · ${esc(fmt(run.updated_at))}</span></div><div class="admin-archive-integrity"><b>${a.totals.correct+a.totals.wrong+a.totals.danger} Choice-Antworten verifizierbar</b><span>${a.totals.review} Aufgaben manuell/Legacy prüfen</span></div><div class="admin-history-answers">${entries.map(([q,v],n)=>archiveRow(q,v,n)).join('')}</div>`;
+      review.innerHTML=`<div class="admin-history-summary"><b>${entries.length} Antworten</b><span>${p.age?p.age+' Jahre · ':''}${p.completed?'Abgeschlossen':'Nicht abgeschlossen'} · ${esc(fmt(run.updated_at))}</span></div><div class="admin-archive-integrity"><b>${a.totals.correct+a.totals.wrong+a.totals.danger} automatisch verifizierbar</b><span>${a.totals.review} Aufgaben manuell/Legacy prüfen</span></div><div class="admin-history-answers">${entries.map(([q,v],n)=>archiveRow(q,v,n)).join('')}</div>`;
     };
     sel.addEventListener('change',draw);draw();
     const answerSection=detail.querySelector('.admin-answer-section');
