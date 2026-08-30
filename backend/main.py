@@ -97,15 +97,14 @@ def admin_user(user=Depends(current_user)):
     if user['role']!='admin': raise HTTPException(403,'Admin erforderlich')
     return user
 
-def answer_count(payload):
-    return len((payload or {}).get('answersByQuestion') or {})
-
 def is_new_run(previous, incoming):
+    # A decreasing answer count is NOT a reliable run boundary: navigation,
+    # migrations or partial client state can legitimately shrink a snapshot.
+    # New runs are created only when there is no active progress, the age mode
+    # changes, or a completed run starts receiving non-completed data again.
     if not previous: return True
     if previous.get('age') != incoming.get('age'): return True
     if previous.get('completed') and not incoming.get('completed'): return True
-    prev_count=answer_count(previous); new_count=answer_count(incoming)
-    if prev_count >= 3 and new_count < prev_count: return True
     return False
 
 def prune_attempts(con,user_id):
@@ -163,14 +162,17 @@ def put_progress(data:ProgressIn,user=Depends(current_user)):
     with db() as con:
         old=con.execute('SELECT payload FROM progress WHERE user_id=?',(user['id'],)).fetchone()
         previous=json.loads(old['payload']) if old else None
-        run_id=str(uuid.uuid4()) if is_new_run(previous,incoming) else (previous.get('_runId') or str(uuid.uuid4()))
+        new_run=is_new_run(previous,incoming)
+        # Prefer an explicit client run id when present; otherwise preserve the
+        # active server run id. A UUID is minted only at an actual run boundary.
+        incoming_run=incoming.get('_runId')
+        previous_run=(previous or {}).get('_runId')
+        run_id=(str(incoming_run) if incoming_run and not new_run else None) or (previous_run if not new_run else None) or str(uuid.uuid4())
         incoming['_runId']=run_id
+        started_at=None if new_run else (previous or {}).get('_runStartedAt')
+        incoming['_runStartedAt']=started_at or ts
         raw=json.dumps(incoming,ensure_ascii=False,separators=(',',':'))
         if len(raw.encode())>2_000_000: raise HTTPException(413,'Fortschritt zu groß')
-        started_at=(previous or {}).get('_runStartedAt') if not is_new_run(previous,incoming) else None
-        started_at=started_at or ts
-        incoming['_runStartedAt']=started_at
-        raw=json.dumps(incoming,ensure_ascii=False,separators=(',',':'))
         completed_at=ts if incoming.get('completed') else None
         con.execute('INSERT INTO progress(user_id,payload,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at',(user['id'],raw,ts))
         con.execute('''INSERT INTO attempts(user_id,run_id,payload,started_at,updated_at,completed_at)
@@ -179,10 +181,10 @@ def put_progress(data:ProgressIn,user=Depends(current_user)):
             payload=excluded.payload,
             updated_at=excluded.updated_at,
             completed_at=CASE WHEN excluded.completed_at IS NOT NULL THEN excluded.completed_at ELSE attempts.completed_at END''',
-          (user['id'],run_id,raw,started_at,ts,completed_at))
+          (user['id'],run_id,raw,incoming['_runStartedAt'],ts,completed_at))
         prune_attempts(con,user['id'])
         con.commit()
-    return {'ok':True,'updated_at':ts,'run_id':run_id}
+    return {'ok':True,'updated_at':ts,'run_id':run_id,'started_at':incoming['_runStartedAt']}
 
 @app.delete('/api/progress')
 def clear_progress(user=Depends(current_user)):
@@ -198,9 +200,11 @@ def admin_users(user=Depends(admin_user)):
         out=[]
         for r in rows:
             payload=json.loads(r['payload']) if r['payload'] else None
+            current_run_id=(payload or {}).get('_runId')
             attempts_rows=con.execute('''SELECT id,run_id,payload,started_at,updated_at,completed_at FROM attempts WHERE user_id=? ORDER BY updated_at DESC,id DESC LIMIT 3''',(r['id'],)).fetchall()
             attempts=[]
             for a in attempts_rows:
-                attempts.append({'id':a['id'],'run_id':a['run_id'],'started_at':a['started_at'],'updated_at':a['updated_at'],'completed_at':a['completed_at'],'payload':json.loads(a['payload'])})
-            out.append({'id':r['id'],'username':r['username'],'display_name':r['display_name'],'updated_at':r['updated_at'],'payload':payload,'attempts':attempts})
+                ap=json.loads(a['payload'])
+                attempts.append({'id':a['id'],'run_id':a['run_id'],'is_current':bool(current_run_id and a['run_id']==current_run_id),'started_at':a['started_at'],'updated_at':a['updated_at'],'completed_at':a['completed_at'],'payload':ap})
+            out.append({'id':r['id'],'username':r['username'],'display_name':r['display_name'],'updated_at':r['updated_at'],'payload':payload,'current_run_id':current_run_id,'attempts':attempts})
     return {'users':out}
