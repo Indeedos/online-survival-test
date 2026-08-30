@@ -4,21 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#07111f" />
-  <title>Online Survival Test · v0.8.0</title>
+  <title>Online Survival Test · v0.8.1</title>
   <link rel="icon" type="image/png" href="website_logo.png" />
   <link rel="shortcut icon" type="image/png" href="website_logo.png" />
   <link rel="apple-touch-icon" href="website_logo.png" />
-  <link rel="stylesheet" href="styles.css?v=080" />
-  <link rel="stylesheet" href="concept-v062.css?v=080" />
-  <link rel="stylesheet" href="concept-v063.css?v=080" />
-  <link rel="stylesheet" href="v064-polish.css?v=080" />
-  <link rel="stylesheet" href="v066-messenger.css?v=080" />
-  <link rel="stylesheet" href="v067-branch-messenger.css?v=080" />
-  <link rel="stylesheet" href="v068-accounts.css?v=080" />
-  <link rel="stylesheet" href="v071-admin-history.css?v=080" />
-  <link rel="stylesheet" href="v073-admin-visual-review.css?v=080" />
-  <link rel="stylesheet" href="v075-completion-guard.css?v=080" />
-  <link rel="stylesheet" href="v080-integrity.css?v=080" />
+  <link rel="stylesheet" href="styles.css?v=081" />
+  <link rel="stylesheet" href="concept-v062.css?v=081" />
+  <link rel="stylesheet" href="concept-v063.css?v=081" />
+  <link rel="stylesheet" href="v064-polish.css?v=081" />
+  <link rel="stylesheet" href="v066-messenger.css?v=081" />
+  <link rel="stylesheet" href="v067-branch-messenger.css?v=081" />
+  <link rel="stylesheet" href="v068-accounts.css?v=081" />
+  <link rel="stylesheet" href="v071-admin-history.css?v=081" />
+  <link rel="stylesheet" href="v073-admin-visual-review.css?v=081" />
+  <link rel="stylesheet" href="v075-completion-guard.css?v=081" />
+  <link rel="stylesheet" href="v080-integrity.css?v=081" />
 </head>
 <body>
   <main class="shell">
@@ -42,21 +42,17 @@
 
       <div class="app-layout">
         <aside class="areas-panel"><div class="panel-kicker">BEREICHE</div><nav id="categoryNav" class="category-nav" aria-label="Testbereiche"></nav><div class="autosave-card"><b>▣ Dein Test läuft automatisch</b><p>Deine Antworten bleiben während des Tests erhalten.</p></div></aside>
-
         <main class="question-zone">
           <article class="question-card concept-question-card">
             <div class="question-head-row"><span id="questionNumber">Frage</span><div class="question-meta"><span id="difficulty"></span><span id="categoryTag"></span></div></div>
-            <h2 id="categoryTitle" class="sr-only">Kategorie</h2>
-            <h3 id="questionText"></h3>
-            <div id="scenario" class="scenario hidden"></div>
-            <div id="visual" class="visual-stage hidden" aria-label="Simulierter Screenshot"></div>
+            <h2 id="categoryTitle" class="sr-only">Kategorie</h2><h3 id="questionText"></h3>
+            <div id="scenario" class="scenario hidden"></div><div id="visual" class="visual-stage hidden" aria-label="Simulierter Screenshot"></div>
             <div id="answers" class="answers"></div><div id="branchStage" class="branch-stage hidden"></div>
             <label id="freeWrap" class="free hidden"><span>Deine Antwort</span><textarea id="freeAnswer" rows="5" placeholder="Beschreibe, was du tun würdest und warum."></textarea></label>
             <div class="question-footer"><label class="remember-toggle"><input id="rememberQuestion" type="checkbox" /> <span>Merken für später</span></label><div class="actions"><button id="prevBtn" class="secondary">← Zurück</button><button id="nextBtn">Weiter →</button></div></div>
           </article>
           <div class="micro-tip"><span>✦</span><p id="microTipText">Tipp: Achte auf Muster. Einzelne Dinge sind nicht immer schlimm – die Kombination macht oft den Unterschied.</p></div>
         </main>
-
         <aside class="right-rail">
           <section class="scenario-card rail-card"><div class="panel-kicker">AKTUELLES THEMA</div><h3 id="scenarioSideTitle">Sicher entscheiden</h3><p id="scenarioSideText">Prüfe nicht nur einzelne Nachrichten, sondern das gesamte Verhalten und den Kontext.</p><div class="mini-progress-title"><span>Dein Fortschritt in diesem Bereich</span><b id="categoryProgressText">0 / 0</b></div><div class="progress category-progress"><i id="categoryProgressBar"></i></div></section>
           <section id="guidancePanel" class="guidance-panel rail-card" aria-live="polite"><div class="guidance-title-row"><span class="guidance-icon">☼</span><div><div class="panel-kicker">DENK DARAN</div><h3 id="guidanceTitle">Sicher entscheiden</h3></div></div><p id="guidanceWhy" class="guidance-why"></p><div id="guidanceRules" class="guidance-rules"></div><details class="guidance-more"><summary>Warum ist das wichtig?</summary><p id="guidanceExplain"></p></details><p class="guidance-note">Die Leitlinien helfen beim Denken – sie verraten nicht die konkrete Lösung der Aufgabe.</p></section>
@@ -65,9 +61,8 @@
     </section>
 
     <section id="educatorPanel" class="hidden"><header class="topbar card"><div><span class="badge">Eltern-/Lehrer-Modus</span><h2 id="educatorTitle">Auswertungsleitfaden</h2></div><button id="educatorBack" class="secondary">Zur Startseite</button></header><article class="card educator-dashboard"><div class="educator-tools"><label>Altersstufe <select id="educatorAge"><option value="11">11 Jahre</option><option value="13">13 Jahre</option></select></label><label>Bereich <select id="educatorCategory"><option value="all">Alle Bereiche</option></select></label><button id="educatorPrint">Leitfaden drucken / PDF</button></div><div id="educatorSummary" class="edu-summary"></div><div id="educatorGuide" class="edu-guide"></div></article></section>
-
     <section id="result" class="hidden"><article class="card"><span class="badge">Auswertung</span><h1 id="scoreTitle"></h1><p id="scoreIntro"></p><div id="categoryScores" class="scores"></div><div id="redFlags" class="redflags"></div><div class="actions"><button id="restartBtn" class="secondary">Neu starten</button><button id="reviewBtn" class="secondary hidden">Mit Eltern/Lehrer besprechen</button><button id="printBtn">Drucken / PDF</button></div></article><article class="card educator"><h2>Hinweis für Erwachsene</h2><p>Besprecht vor allem die Begründungen. Ein Kind kann eine richtige Antwort erraten und trotzdem das Risiko nicht verstanden haben. Besonders wichtig ist, dass es weiß: Bei Erpressung, Grooming, Account-Übernahme oder peinlichen Fehlern immer Hilfe holen – ohne Angst vor Ärger.</p></article></section>
   </main>
-<script src="app.js"></script><script src="social-pack.js"></script><script src="visual-pack.js"></script><script src="scenario-engine.js"></script><script src="educator.js"></script><script src="v05-pack.js"></script><script src="v051-pack.js"></script><script src="v074-question-tuning.js?v=080"></script><script src="v080-answer-integrity-pre.js?v=080"></script><script src="v058-pack.js?v=080"></script><script src="v060-guidance.js"></script><script src="v061-shell.js?v=080"></script><script src="v064-polish.js?v=080"></script><script src="v066-messenger.js?v=080"></script><script src="v067-branch-messenger.js?v=080"></script><script src="v068-accounts.js?v=080"></script><script src="v071-admin-history.js?v=080"></script><script src="v072-clean-restart.js?v=080"></script><script src="v073-admin-visual-review.js?v=080"></script><script src="v075-completion-guard.js?v=080"></script><script src="v079-admin-review-fixes.js?v=080"></script><script src="v080-answer-integrity.js?v=080"></script><script src="v080-admin-integrity.js?v=080"></script>
+<script src="app.js"></script><script src="social-pack.js"></script><script src="visual-pack.js"></script><script src="scenario-engine.js"></script><script src="educator.js"></script><script src="v05-pack.js"></script><script src="v051-pack.js"></script><script src="v074-question-tuning.js?v=081"></script><script src="v080-answer-integrity-pre.js?v=081"></script><script src="v058-pack.js?v=081"></script><script src="v060-guidance.js"></script><script src="v061-shell.js?v=081"></script><script src="v064-polish.js?v=081"></script><script src="v066-messenger.js?v=081"></script><script src="v067-branch-messenger.js?v=081"></script><script src="v068-accounts.js?v=081"></script><script src="v071-admin-history.js?v=081"></script><script src="v072-clean-restart.js?v=081"></script><script src="v073-admin-visual-review.js?v=081"></script><script src="v075-completion-guard.js?v=081"></script><script src="v079-admin-review-fixes.js?v=081"></script><script src="v080-answer-integrity.js?v=081"></script><script src="v080-admin-integrity.js?v=081"></script>
 </body>
 </html>
