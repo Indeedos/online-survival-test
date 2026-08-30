@@ -1,4 +1,4 @@
-// v0.7.1 — admin manual-review guidance + last-three run history
+// v0.7.8 — admin manual-review guidance + full free-text prompts + last-three run history
 (function(){
   const API='https://api.survival.indeedos.cc';
   const escHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,6 +11,22 @@
   }
   function findTask(q){
     try{return Array.isArray(Q)?Q.find(x=>x&&x.q===q)||null:null}catch{return null}
+  }
+  function isManualTask(task){return !!task&&(task.t==='free'||task.manual)}
+  function taskPrompt(task){return isManualTask(task)&&typeof task.s==='string'?task.s.trim():''}
+  function promptHtml(task){
+    const text=taskPrompt(task);
+    return text?`<div class="admin-question-prompt"><small>Aufgabenstellung</small><p>${escHtml(text)}</p></div>`:'';
+  }
+  function addPromptToCurrentRow(row,task){
+    const text=taskPrompt(task);
+    if(!text||row.querySelector('.admin-question-prompt'))return;
+    const head=row.querySelector('.admin-answer-head');
+    if(!head)return;
+    const box=document.createElement('div');
+    box.className='admin-question-prompt';
+    box.innerHTML=`<small>Aufgabenstellung</small><p>${escHtml(text)}</p>`;
+    head.after(box);
   }
   function answerIndexes(value){
     if(Number.isInteger(value))return [value];
@@ -71,19 +87,21 @@
     if(!entries.length)return '<div class="admin-empty">In diesem Durchlauf sind keine Antworten gespeichert.</div>';
     return `<div class="admin-history-summary"><b>${entries.length} Antworten</b><span>${payload?.age?payload.age+' Jahre · ':''}${payload?.completed?'Abgeschlossen':'Nicht abgeschlossen'}</span></div><div class="admin-history-answers">${entries.map(([q,value],idx)=>{
       const task=findTask(q),st=state(value,task),exp=expected(task),guide=manualGuide(task);
-      return `<article class="admin-answer-row admin-history-answer" data-state="${st.kind}"><div class="admin-answer-head"><span class="admin-qno">${idx+1}</span><div><div class="admin-answer-meta">${escHtml(task?.c||'Aufgabe')}${task?.d?' · '+escHtml(task.d):''}</div><b>${escHtml(q)}</b></div><span class="admin-answer-state ${st.kind}">${st.label}</span></div><div class="admin-answer-body"><div><small>Geantwortet</small><p>${escHtml(readable(value,task))}</p></div>${exp?`<div><small>Erwartet</small><p>${escHtml(exp)}</p></div>`:`<div class="admin-manual-guide"><small>${escHtml(guide.title)}</small><p>${escHtml(guide.text)}</p></div>`}</div></article>`;
+      return `<article class="admin-answer-row admin-history-answer" data-state="${st.kind}"><div class="admin-answer-head"><span class="admin-qno">${idx+1}</span><div><div class="admin-answer-meta">${escHtml(task?.c||'Aufgabe')}${task?.d?' · '+escHtml(task.d):''}</div><b>${escHtml(q)}</b></div><span class="admin-answer-state ${st.kind}">${st.label}</span></div>${promptHtml(task)}<div class="admin-answer-body"><div><small>Geantwortet</small><p>${escHtml(readable(value,task))}</p></div>${exp?`<div><small>Erwartet</small><p>${escHtml(exp)}</p></div>`:`<div class="admin-manual-guide"><small>${escHtml(guide.title)}</small><p>${escHtml(guide.text)}</p></div>`}</div></article>`;
     }).join('')}</div>`;
   }
   function addGuidanceToCurrentRows(root){
     root.querySelectorAll('.admin-answer-row').forEach(row=>{
+      const q=row.querySelector('.admin-answer-head b')?.textContent?.trim();
+      if(!q)return;
+      const task=findTask(q);
+      addPromptToCurrentRow(row,task);
       if(row.querySelector('.admin-manual-guide'))return;
       const stateEl=row.querySelector('.admin-answer-state.review');
       if(!stateEl)return;
-      const q=row.querySelector('.admin-answer-head b')?.textContent?.trim();
-      if(!q)return;
-      const guide=manualGuide(findTask(q));
       const body=row.querySelector('.admin-answer-body');
       if(!body)return;
+      const guide=manualGuide(task);
       const box=document.createElement('div');
       box.className='admin-manual-guide';
       box.innerHTML=`<small>${escHtml(guide.title)}</small><p>${escHtml(guide.text)}</p>`;
