@@ -1,4 +1,4 @@
-// v0.7.8 — admin manual-review guidance + full free-text prompts + last-three run history
+// v0.8.0 — admin manual-review guidance + archived run history without duplicate current run
 (function(){
   const API='https://api.survival.indeedos.cc';
   const escHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -14,10 +14,6 @@
   }
   function isManualTask(task){return !!task&&(task.t==='free'||task.manual)}
   function taskPrompt(task){return isManualTask(task)&&typeof task.s==='string'?task.s.trim():''}
-  function promptHtml(task){
-    const text=taskPrompt(task);
-    return text?`<div class="admin-question-prompt"><small>Aufgabenstellung</small><p>${escHtml(text)}</p></div>`:'';
-  }
   function addPromptToCurrentRow(row,task){
     const text=taskPrompt(task);
     if(!text||row.querySelector('.admin-question-prompt'))return;
@@ -27,39 +23,6 @@
     box.className='admin-question-prompt';
     box.innerHTML=`<small>Aufgabenstellung</small><p>${escHtml(text)}</p>`;
     head.after(box);
-  }
-  function answerIndexes(value){
-    if(Number.isInteger(value))return [value];
-    if(Array.isArray(value)&&value.every(Number.isInteger))return value;
-    if(value&&typeof value==='object'){
-      if(Number.isInteger(value.choice))return [value.choice];
-      if(Number.isInteger(value.selected))return [value.selected];
-      if(Array.isArray(value.selected)&&value.selected.every(Number.isInteger))return value.selected;
-      if(Array.isArray(value.choices)&&value.choices.every(Number.isInteger))return value.choices;
-    }
-    return null;
-  }
-  function readable(value,task){
-    const idx=answerIndexes(value);
-    if(idx&&task?.o)return idx.map(n=>task.o[n]??`Antwort ${n+1}`).join(' · ');
-    if(typeof value==='string')return value.trim()||'—';
-    if(typeof value==='number'||typeof value==='boolean')return String(value);
-    if(value&&typeof value==='object'){
-      if(typeof value.free==='string')return value.free.trim()||'—';
-      if(Array.isArray(value.path))return value.path.map(v=>typeof v==='object'?(v.label||v.text||JSON.stringify(v)):String(v)).join(' → ');
-      if(value.branch?.history)return value.branch.history.map(v=>v.label||v.text||v.choice||'Entscheidung').join(' → ');
-      if(Array.isArray(value.marks))return `${value.marks.length} Markierung${value.marks.length===1?'':'en'}`;
-      return JSON.stringify(value);
-    }
-    return Array.isArray(value)?value.join(' · '):'—';
-  }
-  function state(value,task){
-    const got=answerIndexes(value);
-    if(!got||!Array.isArray(task?.k))return {kind:'review',label:'Prüfen'};
-    const a=[...got].sort((x,y)=>x-y),b=[...task.k].sort((x,y)=>x-y);
-    const correct=a.length===b.length&&a.every((v,n)=>v===b[n]);
-    const red=Array.isArray(task.rf)&&a.some(v=>task.rf.includes(v));
-    return {kind:red?'danger':(correct?'correct':'wrong'),label:red?'Red Flag':(correct?'Richtig':'Falsch')};
   }
   function manualGuide(task){
     if(!task)return {title:'Prüfhinweis',text:'Antwort gemeinsam anhand der Aufgabenstellung und Begründung prüfen.'};
@@ -73,25 +36,9 @@
     if(task.v?.type==='imagegrid')return {title:'Prüfhinweis',text:'Entscheidungen einzeln prüfen und besonders auf die Begründung achten; visuelle Sicherheit allein ist kein verlässlicher Echtheitsnachweis.'};
     return {title:'Prüfhinweis',text:'Antwort gemeinsam anhand der Aufgabenstellung und vorhandenen Warnzeichen prüfen.'};
   }
-  function expected(task){
-    if(task?.o&&Array.isArray(task.k))return task.k.map(n=>task.o[n]??`Antwort ${n+1}`).join(' · ');
-    return null;
-  }
-  function fmtDate(v){try{return new Date(v).toLocaleString('de-DE')}catch{return v||'–'}}
-  function runLabel(run,index){
-    const p=run.payload||{}, done=p.completed?'Abgeschlossen':'In Arbeit';
-    return `Durchlauf ${index+1} · ${done} · ${fmtDate(run.updated_at)}`;
-  }
-  function renderRun(payload){
-    const entries=Object.entries(payload?.answersByQuestion||{});
-    if(!entries.length)return '<div class="admin-empty">In diesem Durchlauf sind keine Antworten gespeichert.</div>';
-    return `<div class="admin-history-summary"><b>${entries.length} Antworten</b><span>${payload?.age?payload.age+' Jahre · ':''}${payload?.completed?'Abgeschlossen':'Nicht abgeschlossen'}</span></div><div class="admin-history-answers">${entries.map(([q,value],idx)=>{
-      const task=findTask(q),st=state(value,task),exp=expected(task),guide=manualGuide(task);
-      return `<article class="admin-answer-row admin-history-answer" data-state="${st.kind}"><div class="admin-answer-head"><span class="admin-qno">${idx+1}</span><div><div class="admin-answer-meta">${escHtml(task?.c||'Aufgabe')}${task?.d?' · '+escHtml(task.d):''}</div><b>${escHtml(q)}</b></div><span class="admin-answer-state ${st.kind}">${st.label}</span></div>${promptHtml(task)}<div class="admin-answer-body"><div><small>Geantwortet</small><p>${escHtml(readable(value,task))}</p></div>${exp?`<div><small>Erwartet</small><p>${escHtml(exp)}</p></div>`:`<div class="admin-manual-guide"><small>${escHtml(guide.title)}</small><p>${escHtml(guide.text)}</p></div>`}</div></article>`;
-    }).join('')}</div>`;
-  }
   function addGuidanceToCurrentRows(root){
     root.querySelectorAll('.admin-answer-row').forEach(row=>{
+      if(row.closest('.admin-run-review'))return;
       const q=row.querySelector('.admin-answer-head b')?.textContent?.trim();
       if(!q)return;
       const task=findTask(q);
@@ -108,17 +55,37 @@
       body.appendChild(box);
     });
   }
+  function fmtDate(v){try{return new Date(v).toLocaleString('de-DE')}catch{return v||'–'}}
+  function runLabel(run,index){
+    const p=run.payload||{}, done=p.completed?'Abgeschlossen':'In Arbeit';
+    return `Durchlauf ${index+1} · ${done} · ${fmtDate(run.updated_at)}`;
+  }
+  function sameRun(a,b){
+    if(!a||!b)return false;
+    if(a._runId&&b._runId)return a._runId===b._runId;
+    return a.savedAt&&b.savedAt&&a.savedAt===b.savedAt;
+  }
   function attachHistory(card,user){
     const detail=card.querySelector('.admin-profile-detail');
     if(!detail||detail.querySelector('.admin-run-history'))return;
-    const runs=(user.attempts||[]).slice(0,3);
+    // The normal Detailprüfung below already renders the active/current payload.
+    // Only show genuinely older attempts here, otherwise every question appears twice.
+    const current=user?.payload||null;
+    const runs=(user?.attempts||[]).filter(r=>!sameRun(r?.payload,current)).slice(0,3);
+    if(!runs.length)return;
     const wrap=document.createElement('section');
-    wrap.className='admin-run-history';
-    if(!runs.length){wrap.innerHTML='<div class="admin-run-history-head"><div><span class="admin-kicker">DURCHLÄUFE</span><h4>Verlauf</h4></div><small>Noch kein archivierter Durchlauf.</small></div>';detail.prepend(wrap);return}
-    wrap.innerHTML=`<div class="admin-run-history-head"><div><span class="admin-kicker">DURCHLÄUFE</span><h4>Letzte 3 Sitzungen</h4></div><label>Nachprüfen <select class="admin-run-select">${runs.map((r,i)=>`<option value="${i}">${escHtml(runLabel(r,i))}</option>`).join('')}</select></label></div><div class="admin-run-review"></div>`;
+    wrap.className='admin-run-history admin-run-history-archive';
+    wrap.innerHTML=`<div class="admin-run-history-head"><div><span class="admin-kicker">FRÜHERE DURCHLÄUFE</span><h4>Archivierte Sitzungen</h4></div><label>Nachprüfen <select class="admin-run-select">${runs.map((r,i)=>`<option value="${i}">${escHtml(runLabel(r,i))}</option>`).join('')}</select></label></div><div class="admin-run-review"></div>`;
     const sel=wrap.querySelector('.admin-run-select'),review=wrap.querySelector('.admin-run-review');
-    const draw=()=>{review.innerHTML=renderRun(runs[+sel.value]?.payload||null)};
-    sel.addEventListener('change',draw);draw();detail.prepend(wrap);
+    const draw=()=>{
+      const run=runs[+sel.value];
+      const p=run?.payload||{};
+      const count=Object.keys(p.answersByQuestion||{}).length;
+      review.innerHTML=`<div class="admin-history-summary"><b>${count} Antworten</b><span>${p.age?p.age+' Jahre · ':''}${p.completed?'Abgeschlossen':'Nicht abgeschlossen'} · frühere Sitzung</span></div><p class="admin-archive-note">Für die vollständige Einzelprüfung früherer Sitzungen wird die archivierte Detailansicht verwendet; der aktuelle Durchlauf steht unten in der normalen Detailprüfung.</p>`;
+    };
+    sel.addEventListener('change',draw);draw();
+    const answerSection=detail.querySelector('.admin-answer-section');
+    if(answerSection)detail.insertBefore(wrap,answerSection);else detail.appendChild(wrap);
   }
   async function enhance(){
     const admin=document.querySelector('#adminMini');
