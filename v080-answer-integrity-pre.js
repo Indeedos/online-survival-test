@@ -6,7 +6,7 @@
     for(let n=0;n<s.length;n++){h^=s.charCodeAt(n);h=Math.imul(h,16777619)}
     return (h>>>0).toString(36);
   }
-  if(!Array.isArray(window.Q))return;
+  if(typeof Q==='undefined'||!Array.isArray(Q))return;
   Q.forEach(task=>{
     if(!task||!Array.isArray(task.o)||task.o.length<2)return;
     const seen=new Map();
